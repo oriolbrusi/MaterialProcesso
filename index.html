@@ -224,7 +224,10 @@
     .cal-day.other { color:rgba(255,255,255,0.15); pointer-events:none; }
     .cal-day.today { background:linear-gradient(135deg,rgba(232,184,109,0.2),rgba(192,132,252,0.15)); border:1.5px solid rgba(232,184,109,0.4); color:var(--accent); font-weight:700; }
     .cal-day.selected { background:var(--accent); color:#1a0a2e; font-weight:700; }
-    .cal-day.has-events .dot { width:4px; height:4px; border-radius:50%; background:var(--accent2); }
+    .cal-day .dots { display:flex; gap:3px; align-items:center; }
+    .cal-day .dot  { width:4px; height:4px; border-radius:50%; }
+    .cal-day .dot.ev   { background:var(--accent2); }
+    .cal-day .dot.task { background:var(--accent); }
     .cal-day.selected .dot { background:rgba(26,10,46,0.6); }
     .cal-event-card { background:var(--surface); border-radius:var(--radius); padding:14px 16px; border:1px solid rgba(255,255,255,0.06); display:flex; gap:14px; align-items:flex-start; }
     .cal-event-time { font-size:0.75rem; color:var(--accent); font-weight:500; white-space:nowrap; padding-top:2px; min-width:44px; }
@@ -412,6 +415,7 @@
     <div style="display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;scrollbar-width:none">
       <button class="filter-chip active" onclick="switchAdminTab('users',this)" style="flex-shrink:0">👥 Usuaris</button>
       <button class="filter-chip" onclick="switchAdminTab('settings',this)" style="flex-shrink:0">⚙️ Config</button>
+      <button class="filter-chip" onclick="switchAdminTab('llocs',this)" style="flex-shrink:0">📍 Llocs</button>
       <button class="filter-chip" onclick="switchAdminTab('migrate',this)" style="flex-shrink:0">🔄 Migrar</button>
     </div>
 
@@ -518,6 +522,18 @@
       </div>
     </div>
 
+    <!-- LLOCS -->
+    <div id="adminLlocs" style="display:none">
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Gestiona els llocs disponibles al selector de tasques i actes.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="newLlocInput" type="text" placeholder="Nom del lloc…" style="flex:1;padding:11px 14px;background:var(--surface2);border:1.5px solid rgba(255,255,255,0.08);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none" onkeydown="if(event.key==='Enter')addLloc()" />
+        <button onclick="addLloc()" style="padding:11px 18px;background:linear-gradient(135deg,var(--accent),#d4973e);border:none;border-radius:12px;color:#1a0a2e;font-weight:700;cursor:pointer;font-size:1.1rem">+</button>
+      </div>
+      <div id="llocList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
     <!-- MIGRAR (dins admin) -->
     <div id="adminMigrate" style="display:none">
       <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
@@ -558,6 +574,12 @@
       </div>
       <div class="field"><label>Data límit</label><input id="t-date" type="date" /></div>
     </div>
+    <div class="field"><label>Lloc</label>
+      <select id="t-place-sel" onchange="syncPlaceInput('t-place-sel','t-place')">
+        <option value="">— Selecciona o escriu —</option>
+      </select>
+      <input id="t-place" type="text" placeholder="O escriu un lloc nou…" style="margin-top:6px" />
+    </div>
     <div class="field"><label>Categoria</label><input id="t-tag" type="text" placeholder="Ex: Escenografia, So…" /></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalTask')">Cancel·lar</button>
@@ -576,7 +598,12 @@
       <div class="field"><label>Data</label><input id="e-date" type="date" /></div>
       <div class="field"><label>Hora</label><input id="e-time" type="time" /></div>
     </div>
-    <div class="field"><label>Lloc</label><input id="e-place" type="text" placeholder="Ex: Sala principal" /></div>
+    <div class="field"><label>Lloc</label>
+      <select id="e-place-sel" onchange="syncPlaceInput('e-place-sel','e-place')">
+        <option value="">— Selecciona o escriu —</option>
+      </select>
+      <input id="e-place" type="text" placeholder="O escriu un lloc nou…" style="margin-top:6px" />
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalEvent')">Cancel·lar</button>
       <button class="btn btn-primary" onclick="addEvent()">Afegir</button>
@@ -650,6 +677,7 @@ function bootApp(cfg) {
   let currentRole  = 'viewer'; // admin | editor | viewer
   let tasks  = [];
   let events = [];
+  let llocs  = [];
   let unsubTasks = null, unsubEvents = null;
 
   const today        = new Date();
@@ -749,7 +777,14 @@ function bootApp(cfg) {
     unsubEvents = onSnapshot(collection(db,'events'), snap => {
       events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderCalendar();
+      renderTasks(); // also refresh tasks panel (events shown there too)
       updateStats();
+    });
+    // Watch llocs
+    onSnapshot(collection(db,'llocs'), snap => {
+      llocs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.name.localeCompare(b.name));
+      populatePlaceSelectors();
+      if (document.getElementById('adminLlocs') && document.getElementById('adminLlocs').style.display !== 'none') renderLlocList();
     });
     // Admin: watch users
     if (isAdmin()) {
@@ -759,6 +794,22 @@ function bootApp(cfg) {
       });
     }
   }
+
+  function populatePlaceSelectors() {
+    ['t-place-sel','e-place-sel'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Selecciona o escriu —</option>' +
+        llocs.map(l => `<option value="${l.name}" ${l.name===cur?'selected':''}>${l.name}</option>`).join('');
+    });
+  }
+
+  window.syncPlaceInput = function(selId, inputId) {
+    const sel = document.getElementById(selId);
+    const inp = document.getElementById(inputId);
+    if (sel && inp && sel.value) inp.value = sel.value;
+  };
 
   // ── TASKS ──────────────────────────────────────────
   function renderTasks() {
@@ -814,15 +865,21 @@ function bootApp(cfg) {
     if (!canEdit()) return;
     const name = document.getElementById('t-name').value.trim();
     if (!name) { document.getElementById('t-name').focus(); return; }
+    const tPlace = document.getElementById('t-place').value.trim();
     await addDoc(collection(db,'tasks'), {
       name, prio: document.getElementById('t-prio').value,
       date: document.getElementById('t-date').value,
       tag:  document.getElementById('t-tag').value.trim(),
+      place: tPlace,
       done: false,
       createdBy: currentUser.uid,
       createdByName: currentUser.displayName,
       createdAt: serverTimestamp()
     });
+    // Auto-save new place if not already in llocs
+    if (tPlace && !llocs.find(l=>l.name===tPlace)) {
+      await addDoc(collection(db,'llocs'), { name: tPlace, createdAt: serverTimestamp() });
+    }
     closeModal('modalTask');
   };
 
@@ -841,11 +898,13 @@ function bootApp(cfg) {
     for (let i=0; i<startDow; i++) grid.innerHTML += `<div class="cal-day other"></div>`;
     for (let d=1; d<=daysInMonth; d++) {
       const iso = `${calYear}-${String(calMonthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const hasEv = events.some(e=>e.date===iso);
+      const hasEv   = events.some(e=>e.date===iso);
+      const hasTask = tasks.some(t=>t.date===iso && !t.done);
       grid.innerHTML += `
-        <div class="cal-day ${iso===todayISO?'today':''} ${iso===selectedDate?'selected':''} ${hasEv?'has-events':''}"
+        <div class="cal-day ${iso===todayISO?'today':''} ${iso===selectedDate?'selected':''}"
              onclick="selectDate('${iso}')">
-          ${d}${hasEv?'<div class="dot"></div>':''}
+          ${d}
+          ${(hasEv||hasTask)?`<div class="dots">${hasEv?'<div class="dot ev"></div>':''}${hasTask?'<div class="dot task"></div>':''}</div>`:''}
         </div>`;
     }
     renderDayEvents();
@@ -861,23 +920,47 @@ function bootApp(cfg) {
 
   function renderDayEvents() {
     const [y,m,d] = selectedDate.split('-').map(Number);
-    document.getElementById('calEventsTitle').textContent = `Actes · ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+    document.getElementById('calEventsTitle').textContent = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
     const evs = events.filter(e=>e.date===selectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const tasksDay = tasks.filter(t=>t.date===selectedDate && !t.done);
     const list = document.getElementById('calEventList');
-    if (!evs.length) {
-      list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div>Cap acte aquest dia.</div>`;
+
+    if (!evs.length && !tasksDay.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div>Cap element aquest dia.</div>`;
       return;
     }
-    list.innerHTML = evs.map(e=>`
-      <div class="cal-event-card">
-        <div class="cal-event-time">${e.time||'--:--'}</div>
-        <div style="flex:1">
-          <div class="cal-event-name">${e.name}</div>
-          ${e.place?`<div class="cal-event-place">📍 ${e.place}</div>`:''}
-          <div class="cal-event-who">${e.createdByName||''}</div>
-        </div>
-        ${canEdit()?`<button class="cal-event-del" onclick="deleteEvent('${e.id}')">🗑</button>`:''}
-      </div>`).join('');
+
+    let html = '';
+    if (evs.length) {
+      html += `<div style="font-size:0.72rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Actes</div>`;
+      html += evs.map(e=>`
+        <div class="cal-event-card">
+          <div class="cal-event-time">${e.time||'--:--'}</div>
+          <div style="flex:1">
+            <div class="cal-event-name">${e.name}</div>
+            ${e.place?`<div class="cal-event-place">📍 ${e.place}</div>`:''}
+            <div class="cal-event-who">${e.createdByName||''}</div>
+          </div>
+          ${canEdit()?`<button class="cal-event-del" onclick="deleteEvent('${e.id}')">🗑</button>`:''}
+        </div>`).join('');
+    }
+    if (tasksDay.length) {
+      html += `<div style="font-size:0.72rem;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin:${evs.length?'16px':0} 0 8px">Tasques</div>`;
+      html += tasksDay.map(t=>`
+        <div class="cal-event-card" style="border-color:rgba(192,132,252,0.15)">
+          <div class="cal-event-time" style="color:var(--accent2)">
+            ${{alta:'🔴',mitja:'🟡',baixa:'🟢'}[t.prio]||'🟡'}
+          </div>
+          <div style="flex:1">
+            <div class="cal-event-name ${t.done?'':''}"> ${t.name}</div>
+            ${t.place?`<div class="cal-event-place">📍 ${t.place}</div>`:''}
+            ${t.tag?`<div class="cal-event-who">${t.tag}</div>`:''}
+            <div class="cal-event-who">${t.createdByName||''}</div>
+          </div>
+          ${canEdit()?`<button class="cal-event-del" onclick="deleteTask('${t.id}')">🗑</button>`:''}
+        </div>`).join('');
+    }
+    list.innerHTML = html;
   }
 
   window.addEvent = async function() {
@@ -885,12 +968,16 @@ function bootApp(cfg) {
     const name = document.getElementById('e-name').value.trim();
     const date = document.getElementById('e-date').value;
     if (!name||!date) { (!name?document.getElementById('e-name'):document.getElementById('e-date')).focus(); return; }
+    const ePlace = document.getElementById('e-place').value.trim();
     await addDoc(collection(db,'events'), {
       name, date, time: document.getElementById('e-time').value,
-      place: document.getElementById('e-place').value.trim(),
+      place: ePlace,
       createdBy: currentUser.uid, createdByName: currentUser.displayName,
       createdAt: serverTimestamp()
     });
+    if (ePlace && !llocs.find(l=>l.name===ePlace)) {
+      await addDoc(collection(db,'llocs'), { name: ePlace, createdAt: serverTimestamp() });
+    }
     selectedDate = date;
     const [y,m] = date.split('-').map(Number);
     calYear=y; calMonthIdx=m-1;
@@ -931,11 +1018,53 @@ function bootApp(cfg) {
   window.switchAdminTab = function(tab, el) {
     document.getElementById('adminUsers').style.display    = tab==='users'    ? '' : 'none';
     document.getElementById('adminSettings').style.display = tab==='settings' ? '' : 'none';
+    document.getElementById('adminLlocs').style.display    = tab==='llocs'    ? '' : 'none';
     document.getElementById('adminMigrate').style.display  = tab==='migrate'  ? '' : 'none';
     document.querySelectorAll('#section-admin .filter-chip').forEach(c=>c.classList.remove('active'));
     el.classList.add('active');
     if (tab==='settings') loadAppSettingsForm(db);
     if (tab==='migrate')  renderMigrateSection();
+    if (tab==='llocs')    renderLlocList();
+  };
+
+  // ── LLOCS ──────────────────────────────────────────
+  function renderLlocList() {
+    const list = document.getElementById('llocList');
+    if (!list) return;
+    if (!llocs.length) {
+      list.innerHTML = `<div class="empty" style="padding:24px 0"><div class="empty-icon">📍</div>Cap lloc guardat.</div>`;
+      return;
+    }
+    list.innerHTML = llocs.map(l => `
+      <div style="background:var(--surface);border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px">
+        <span style="font-size:1rem">📍</span>
+        <input value="${l.name}" id="lloc-${l.id}" style="flex:1;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;padding:0"
+          onblur="updateLloc('${l.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" />
+        <button onclick="deleteLloc('${l.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:4px;transition:color 0.2s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--muted)'">🗑</button>
+      </div>`).join('');
+  }
+
+  window.addLloc = async function() {
+    const input = document.getElementById('newLlocInput');
+    const name = input.value.trim();
+    if (!name) return;
+    if (llocs.find(l=>l.name===name)) { showToast('⚠️ Aquest lloc ja existeix'); return; }
+    await addDoc(collection(db,'llocs'), { name, createdAt: serverTimestamp() });
+    input.value = '';
+  };
+
+  window.updateLloc = async function(id, newName) {
+    const name = newName.trim();
+    if (!name) return;
+    const old = llocs.find(l=>l.id===id);
+    if (!old || old.name === name) return;
+    await updateDoc(doc(db,'llocs',id), { name });
+    showToast('✅ Lloc actualitzat');
+  };
+
+  window.deleteLloc = async function(id) {
+    await deleteDoc(doc(db,'llocs',id));
+    showToast('🗑 Lloc eliminat');
   };
 
   // ── APP SETTINGS ───────────────────────────────────
@@ -1189,14 +1318,16 @@ function bootApp(cfg) {
 // ── MODALS (global) ───────────────────────────────────
 window.openModal = function(type) {
   if (type==='task') {
-    ['t-name','t-tag'].forEach(id=>document.getElementById(id).value='');
+    ['t-name','t-tag','t-place'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('t-prio').value='mitja';
     document.getElementById('t-date').value='';
+    document.getElementById('t-place-sel').value='';
     document.getElementById('modalTask').classList.add('open');
     setTimeout(()=>document.getElementById('t-name').focus(),300);
   } else {
     ['e-name','e-place'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('e-time').value='';
+    document.getElementById('e-place-sel').value='';
     document.getElementById('e-date').value=window._selectedDate||'';
     document.getElementById('modalEvent').classList.add('open');
     setTimeout(()=>document.getElementById('e-name').focus(),300);
