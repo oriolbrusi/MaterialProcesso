@@ -218,24 +218,19 @@
     .cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
     .cal-month { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; }
     .cal-btn { width:36px; height:36px; background:var(--surface2); border:none; border-radius:10px; color:var(--text); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
-    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:24px; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:24px; align-items:start; }
     .cal-dow { text-align:center; font-size:0.68rem; color:var(--muted); font-weight:500; padding:4px 0; letter-spacing:0.05em; text-transform:uppercase; }
-    .cal-day { min-height:52px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:6px; cursor:pointer; font-size:0.85rem; transition:background 0.15s; position:relative; gap:2px; }
+    .cal-day { min-height:64px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:5px; cursor:pointer; font-size:0.85rem; transition:background 0.15s; position:relative; gap:2px; overflow:hidden; }
     .cal-day.other { color:rgba(255,255,255,0.15); pointer-events:none; }
     .cal-day.today { background:linear-gradient(135deg,rgba(232,184,109,0.2),rgba(192,132,252,0.15)); border:1.5px solid rgba(232,184,109,0.4); color:var(--accent); font-weight:700; }
     .cal-day.selected { background:var(--accent); color:#1a0a2e; font-weight:700; }
-    .cal-day { overflow:hidden; }
-    .cal-day .dots { display:flex; gap:3px; align-items:center; }
-    .cal-day .dot  { width:6px; height:6px; border-radius:50%; box-shadow:0 0 4px currentColor; }
-    .cal-day .dot.ev   { background:var(--accent2); color:var(--accent2); }
-    .cal-day .dot.task { background:var(--accent);  color:var(--accent); }
-    .cal-day.selected .dot { background:rgba(26,10,46,0.8); color:rgba(26,10,46,0.8); box-shadow:none; }
-    .cal-day .cal-day-labels { display:flex; flex-direction:column; gap:1px; width:100%; padding:0 2px; overflow:hidden; }
-    .cal-day .cal-day-label { font-size:0.48rem; line-height:1.2; border-radius:2px; padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; font-weight:500; }
-    .cal-day .cal-day-label.ev   { background:rgba(192,132,252,0.25); color:var(--accent2); }
-    .cal-day .cal-day-label.task { background:rgba(232,184,109,0.2);  color:var(--accent); }
-    .cal-day.selected .cal-day-label.ev   { background:rgba(26,10,46,0.2); color:rgba(26,10,46,0.8); }
-    .cal-day.selected .cal-day-label.task { background:rgba(26,10,46,0.2); color:rgba(26,10,46,0.8); }
+    .cal-day .cal-day-labels { display:flex; flex-direction:column; gap:1px; width:100%; padding:0 2px; overflow:hidden; margin-top:2px; }
+    .cal-day .cal-day-label { font-size:0.52rem; line-height:1.3; border-radius:3px; padding:1px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; font-weight:600; }
+    .cal-day .cal-day-label.ev        { background:rgba(192,132,252,0.25); color:var(--accent2); border-left:2px solid var(--accent2); }
+    .cal-day .cal-day-label.task-alta { background:rgba(248,113,113,0.2);  color:var(--danger);  border-left:2px solid var(--danger); }
+    .cal-day .cal-day-label.task-mitja{ background:rgba(232,184,109,0.2);  color:var(--accent);  border-left:2px solid var(--accent); }
+    .cal-day .cal-day-label.task-baixa{ background:rgba(74,222,128,0.15);  color:var(--success); border-left:2px solid var(--success); }
+    .cal-day.selected .cal-day-label  { background:rgba(26,10,46,0.18); color:rgba(26,10,46,0.85); border-left-color:rgba(26,10,46,0.4); }
     .cal-event-card { background:var(--surface); border-radius:var(--radius); padding:14px 16px; border:1px solid rgba(255,255,255,0.06); display:flex; gap:14px; align-items:flex-start; }
     .cal-event-time { font-size:0.75rem; color:var(--accent); font-weight:500; white-space:nowrap; padding-top:2px; min-width:44px; }
     .cal-event-name { font-size:0.92rem; font-weight:500; }
@@ -378,6 +373,7 @@
 <div class="tabs" id="mainTabs" style="display:none">
   <button class="tab active" onclick="switchTab('tasks')" id="tab-tasks"><span>✅</span> Tasques</button>
   <button class="tab" onclick="switchTab('calendar')" id="tab-calendar"><span>📅</span> Calendari</button>
+  <button class="tab" onclick="switchTab('history')" id="tab-history"><span>📚</span> Historial</button>
   <button class="tab" onclick="switchTab('admin')" id="tab-admin" style="display:none"><span>👑</span> Admin</button>
 </div>
 
@@ -586,7 +582,13 @@
       </div>
       <div style="background:rgba(232,184,109,0.06);border:1px solid rgba(232,184,109,0.2);border-radius:14px;padding:14px 16px">
         <div style="font-size:0.78rem;color:var(--accent);font-weight:500;margin-bottom:6px">ℹ️ Com funciona</div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.7">Es calcula la diferència de dies entre el Dijous Sant de l'any base i el de l'any destí. Totes les dates es desplacen aquest nombre de dies. Les tasques completades no es migren.</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.7">Es calcula la diferència de dies entre el Dijous Sant de l'any base i el de l'any destí. Totes les dates es desplacen aquest nombre de dies. Les tasques completades no es migren. Abans de migrar es fa una còpia de seguretat automàtica.</div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="font-size:0.75rem;color:var(--danger);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">⏪ Revertir migració</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;line-height:1.6">Restaura les dades d'un any anterior. Sobreescriurà totes les tasques i actes actuals.</p>
+        <div id="revertList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
 
@@ -693,6 +695,17 @@
       <button class="btn btn-primary" onclick="executeMigration()" style="background:linear-gradient(135deg,var(--accent2),#9333ea)">Confirmar</button>
     </div>
   </div>
+  <!-- HISTORIAL -->
+  <div class="section" id="section-history">
+    <div class="section-header" style="margin-bottom:8px">
+      <div class="section-title">Historial</div>
+    </div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Còpies de seguretat guardades automàticament en cada migració. Només lectura.
+    </p>
+    <div id="historyYearList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
 </div>
 
 <!-- MODAL CONFIRMAR ELIMINACIÓ -->
@@ -879,6 +892,8 @@ function bootApp(cfg) {
         renderUserList(users, db);
       });
     }
+    // History: available to all
+    subscribeHistory();
   }
 
   function populatePlaceSelectors() {
@@ -1015,19 +1030,17 @@ function bootApp(cfg) {
       const iso = `${calYear}-${String(calMonthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const dayEvs   = events.filter(e=>e.date===iso);
       const dayTasks = tasks.filter(t=>t.date===iso && !t.done);
-      const hasEv   = dayEvs.length > 0;
-      const hasTask = dayTasks.length > 0;
-      // Build mini labels (max 2 total to avoid overflow)
+      // All items sorted: events first, then tasks by priority
+      const priOrder = {alta:0, mitja:1, baixa:2};
       const allLabels = [
-        ...dayEvs.map(e=>({type:'ev', name:e.name})),
-        ...dayTasks.map(t=>({type:'task', name:t.name}))
-      ].slice(0,2);
-      const labelsHtml = allLabels.map(l=>`<div class="cal-day-label ${l.type}">${l.name}</div>`).join('');
+        ...dayEvs.map(e=>({cls:'ev', name:e.name, order:-1})),
+        ...dayTasks.map(t=>({cls:`task-${t.prio||'mitja'}`, name:t.name, order:priOrder[t.prio]??1}))
+      ].sort((a,b)=>a.order-b.order);
+      const labelsHtml = allLabels.map(l=>`<div class="cal-day-label ${l.cls}">${l.name}</div>`).join('');
       grid.innerHTML += `
         <div class="cal-day ${iso===todayISO?'today':''} ${iso===selectedDate?'selected':''}"
              onclick="selectDate('${iso}')">
-          ${d}
-          ${(hasEv||hasTask)?`<div class="dots">${hasEv?'<div class="dot ev"></div>':''}${hasTask?'<div class="dot task"></div>':''}</div>`:''}
+          <span style="font-weight:${iso===todayISO||iso===selectedDate?'700':'400'}">${d}</span>
           ${labelsHtml?`<div class="cal-day-labels">${labelsHtml}</div>`:''}
         </div>`;
     }
@@ -1489,6 +1502,19 @@ function bootApp(cfg) {
     if (!isAdmin()) return;
     const baseYear=detectBaseYear(), htBase=holyThursday(baseYear), htTarget=holyThursday(targetMigrateYear);
     const delta=diffDays(htBase,htTarget);
+
+    // 1. Save snapshot of current data before migrating
+    const snapshotTasks  = tasks.map(t=>({...t}));
+    const snapshotEvents = events.map(e=>({...e}));
+    await setDoc(doc(db,'history',String(baseYear)), {
+      year: baseYear,
+      savedAt: serverTimestamp(),
+      savedBy: currentUser.displayName,
+      tasks:  snapshotTasks.map(t=>({ id:t.id, name:t.name, prio:t.prio, date:t.date, time:t.time||'', duration:t.duration||'', place:t.place||'', tag:t.tag||'', done:t.done, createdByName:t.createdByName||'' })),
+      events: snapshotEvents.map(e=>({ id:e.id, name:e.name, date:e.date, time:e.time||'', duration:e.duration||'', place:e.place||'', createdByName:e.createdByName||'' }))
+    });
+
+    // 2. Migrate all dates
     const promises = [
       ...tasks.filter(t=>!t.done&&t.date).map(t => updateDoc(doc(db,'tasks',t.id), { date: shiftISO(t.date,delta) })),
       ...events.map(e => updateDoc(doc(db,'events',e.id), { date: shiftISO(e.date,delta) }))
@@ -1497,8 +1523,128 @@ function bootApp(cfg) {
     calYear=targetMigrateYear; calMonthIdx=holyThursday(targetMigrateYear).getMonth();
     selectedDate=`${calYear}-${String(calMonthIdx+1).padStart(2,'0')}-${String(holyThursday(targetMigrateYear).getDate()).padStart(2,'0')}`;
     closeModal('modalMigrate');
-    showToast(`✅ Migrat al ${targetMigrateYear}! (${delta>=0?'+':''}${delta} dies)`);
+    showToast(`✅ Migrat al ${targetMigrateYear}! Còpia del ${baseYear} guardada.`);
   };
+
+  // ── HISTORY ────────────────────────────────────────
+  let historySnapshots = [];
+
+  function subscribeHistory() {
+    onSnapshot(collection(db,'history'), snap => {
+      historySnapshots = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.year-a.year);
+      renderHistoryList();
+      renderRevertList();
+    });
+  }
+
+  function renderHistoryList() {
+    const list = document.getElementById('historyYearList');
+    if (!list) return;
+    if (!historySnapshots.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📚</div>Cap migració guardada encara.<br>Es crearà automàticament en la propera migració.</div>`;
+      return;
+    }
+    list.innerHTML = historySnapshots.map(snap => `
+      <div style="background:var(--surface);border-radius:var(--radius);border:1px solid rgba(255,255,255,0.06);overflow:hidden">
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer"
+             onclick="toggleHistoryYear('${snap.year}')">
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--accent)">${snap.year}</div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
+              ${(snap.tasks||[]).length} tasques · ${(snap.events||[]).length} actes
+              ${snap.savedBy ? ` · guardat per ${snap.savedBy}` : ''}
+            </div>
+          </div>
+          <div id="hist-arrow-${snap.year}" style="color:var(--muted);font-size:1.2rem;transition:transform 0.2s">›</div>
+        </div>
+        <div id="hist-content-${snap.year}" style="display:none;padding:0 16px 16px">
+          ${renderHistoryContent(snap)}
+        </div>
+      </div>`).join('');
+  }
+
+  function renderHistoryContent(snap) {
+    let html = '';
+    if ((snap.events||[]).length) {
+      html += `<div style="font-size:0.72rem;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Actes</div>`;
+      html += (snap.events||[]).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(e=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--accent2)">
+          <div style="font-size:0.88rem;font-weight:500">${e.name}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">
+            ${e.date?fmtDate(e.date):''}${e.time?' · '+e.time:''}${e.place?' · 📍'+e.place:''}
+          </div>
+        </div>`).join('');
+    }
+    if ((snap.tasks||[]).length) {
+      const priColors = {alta:'var(--danger)',mitja:'var(--accent)',baixa:'var(--success)'};
+      html += `<div style="font-size:0.72rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin:${(snap.events||[]).length?'12px':0} 0 8px">Tasques</div>`;
+      html += (snap.tasks||[]).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(t=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${priColors[t.prio]||'var(--accent)'}">
+          <div style="font-size:0.88rem;font-weight:500;${t.done?'text-decoration:line-through;opacity:0.5':''}">${t.name}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">
+            ${t.date?fmtDate(t.date):''}${t.time?' · '+t.time:''}${t.place?' · 📍'+t.place:''}${t.tag?' · '+t.tag.split('\n')[0]:''}
+          </div>
+        </div>`).join('');
+    }
+    return html || '<div style="font-size:0.82rem;color:var(--muted)">Sense dades.</div>';
+  }
+
+  window.toggleHistoryYear = function(year) {
+    const content = document.getElementById(`hist-content-${year}`);
+    const arrow   = document.getElementById(`hist-arrow-${year}`);
+    if (!content) return;
+    const open = content.style.display === 'none';
+    content.style.display = open ? '' : 'none';
+    arrow.style.transform = open ? 'rotate(90deg)' : '';
+  };
+
+  function renderRevertList() {
+    const list = document.getElementById('revertList');
+    if (!list) return;
+    if (!historySnapshots.length) {
+      list.innerHTML = `<div style="font-size:0.82rem;color:var(--muted)">Cap còpia disponible.</div>`;
+      return;
+    }
+    list.innerHTML = historySnapshots.map(snap => `
+      <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,0.06)">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem">${snap.year}</div>
+          <div style="font-size:0.72rem;color:var(--muted)">${(snap.tasks||[]).length} tasques · ${(snap.events||[]).length} actes</div>
+        </div>
+        <button onclick="confirmRevert('${snap.year}')" class="btn" style="padding:8px 14px;font-size:0.8rem;background:rgba(248,113,113,0.15);color:var(--danger);border:1px solid rgba(248,113,113,0.2);flex:none">⏪ Revertir</button>
+      </div>`).join('');
+  }
+
+  window.confirmRevert = function(year) {
+    if (!isAdmin()) return;
+    const snap = historySnapshots.find(s=>String(s.year)===String(year));
+    if (!snap) return;
+    showConfirmDelete(
+      `Revertir a l'any <strong>${year}</strong>? Això sobreescriurà totes les tasques i actes actuals amb les dades del ${year}. Aquesta acció no es pot desfer.`,
+      () => executeRevert(snap)
+    );
+  };
+
+  async function executeRevert(snap) {
+    if (!isAdmin()) return;
+    showToast('⏳ Revertint…');
+
+    // Delete all current tasks and events
+    const delPromises = [
+      ...tasks.map(t => deleteDoc(doc(db,'tasks',t.id))),
+      ...events.map(e => deleteDoc(doc(db,'events',e.id)))
+    ];
+    await Promise.all(delPromises);
+
+    // Restore snapshot tasks and events
+    const restorePromises = [
+      ...(snap.tasks||[]).map(t => setDoc(doc(db,'tasks',t.id), { ...t, restoredFrom: snap.year, createdAt: serverTimestamp() })),
+      ...(snap.events||[]).map(e => setDoc(doc(db,'events',e.id), { ...e, restoredFrom: snap.year, createdAt: serverTimestamp() }))
+    ];
+    await Promise.all(restorePromises);
+
+    showToast(`✅ Restaurat a ${snap.year}!`);
+  }
 
   // ── TABS ───────────────────────────────────────────
   window.switchTab = function(tab) {
@@ -1507,6 +1653,7 @@ function bootApp(cfg) {
     document.getElementById(`section-${tab}`).classList.add('active');
     document.getElementById(`tab-${tab}`).classList.add('active');
     if (tab==='calendar') renderCalendar();
+    if (tab==='history')  renderHistoryList();
   };
 
   // ── SHOW MAIN ──────────────────────────────────────
